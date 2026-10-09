@@ -31,15 +31,42 @@ response = client.chat.completions.create(
 
 SYSTEM_PROMPT = """
 
+# Personality
+You are a helpful personal assistant.
 
+# Tool
+get_my_name: This returns the name of the Engineer managing this code. It takes a string as input and returns a string as output.
+This is how to use the tool:
+Anytime this tool is called, I want you to specify a json blob using the example below in this format:
+{
+    "tool_name": "get_my_name",
+    "input": "Paul"
+}
 
+# Goal
+Answer the user's question as best you can. Use the tool only when you need information you don't already have.
 
+# Format
+ALWAYS follow this format:
 
+Question: the question you must answer
+Thought: think about what to do next. Only one action at a time.
+Action: the json blob for the tool you want to call
+Observation: the result of the tool. This will be given to you, so do not write it yourself.
 
+... (Thought/Action/Observation can repeat as many times as needed)
+
+When you have the answer, end with:
+Thought: I now know the final answer
+Final Answer: the final answer to the original question
+
+# Rules
+- After writing an Action, STOP and wait for the Observation.
+- Always use the exact characters `Final Answer:` when giving your final answer.
 
 """
 
-
+# We can now call the client with the system prompt and the message template. We will pass the system prompt to the chat method. The chat method will return a response from the model. We will print the response to the console.
 
 
 
