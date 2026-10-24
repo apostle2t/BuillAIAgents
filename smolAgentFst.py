@@ -1,16 +1,19 @@
 import os
 from openai import OpenAI
-from smolagents import CodeAgent, DuckDuckGoSearchTool, FinalAnswerTool, InferenceClientModel, load_tool, tool, GradioUI
+from smolagents import CodeAgent, DuckDuckGoSearchTool, FinalAnswerTool, load_tool, tool, \
+    GradioUI, OpenAIServerModel
 import datetime
 import requests
 import pytz
 import yaml
+from dotenv import load_dotenv
 
 """
 We are building an agent which generates Cat Images, does websearch, Checks the local timezone in a 
 particular place
-
 """
+
+load_dotenv()
 
 
 # We define the tool blocks
@@ -30,7 +33,7 @@ def get_current_timezone(timezone: str) -> str:
     """
     A tool that fetched the current local time in a specified timezone.
     Args:
-        timezone (str): A string representing a valid time (e.g., 'America/New_York').
+        timezone (str): A string representing a valid timezone (e.g., 'America/New_York').
     """
     try:
         tz = pytz.timezone(timezone)
@@ -42,18 +45,22 @@ def get_current_timezone(timezone: str) -> str:
 
 # We define the Agent
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")
+
 final_answer = FinalAnswerTool()
 
-# We define the chat client with the InferenceClient class from the huggingface_hub library. We pass the token to the constructor of the InferenceClient class. This will allow us to use the Hugging Face API to generate text.
-client = OpenAI(
-    base_url = "https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY)
+# Import tool from Hub
+image_generation_tool = load_tool("agents-course/text-to-image", trust_remote_code=True, token = HF_TOKEN)
 
-model = client.chat.completions.create(
-    model="deepseek/deepseek-v4.1-flash",
+# We make use of the search tool
+search_web = DuckDuckGoSearchTool()
+
+# We define the model.
+model = OpenAIServerModel(
+    model_id="deepseek/deepseek-v4.1-flash",
+    api_base="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
     max_tokens=3000,
-    stream = False,
-    extra_body = {"reasoning": {"enabled": False}}
 )
 
 with open("prompts.yaml", 'r') as stream:
@@ -62,14 +69,10 @@ with open("prompts.yaml", 'r') as stream:
 # We're creating our CodeAgent
 agent = CodeAgent(
     model=model,
-    tools=[final_answer, get_current_timezone],  # add your tools here (don't remove final_answer)
+    tools=[final_answer, get_current_timezone, image_generation_tool, search_web],  # add your tools here (don't remove final_answer)
     max_steps=6,
     verbosity_level=1,
-    grammar=None,
-    planning_interval=None,
-    name=None,
-    description=None,
-    prompt_templates=prompt_templates
+    instructions = "You are a helpful assistant that can generate images, search the web, and check the time anywhere.",
 )
 
 GradioUI(agent).launch()
