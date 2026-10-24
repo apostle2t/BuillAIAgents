@@ -3,30 +3,19 @@ This python file shows how an LLM Structure their generations in a conversationa
 """
 from huggingface_hub import InferenceClient
 from dotenv import load_dotenv
+from openai import OpenAI
 import os
 
 # We get the token from the .env file with the help of dotenv.
 load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # We define the chat client with the InferenceClient class from the huggingface_hub library. We pass the token to the constructor of the InferenceClient class. This will allow us to use the Hugging Face API to generate text.
-client = InferenceClient(model = "moonshotai/Kimi-K2.5", token=HF_TOKEN)
-
-
-# We now define the message template
-message = [
-    {"role": "user", "content": "What is the name of the Engineer managing this code?"}
-]
-
-
-# We can now call the client. We will be using the chat method of the InferenceClient class. We will pass the message template to the chat method. The chat method will return a response from the model. We will print the response to the console.
-response = client.chat.completions.create(
-    messages=message,
-    max_tokens=100,
-    stream = False,
-    extra_body = {"thinking": {"type": "disabled"}}
-)
+client = OpenAI(
+    base_url = "https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY)
 
 
 SYSTEM_PROMPT = """
@@ -35,12 +24,11 @@ SYSTEM_PROMPT = """
 You are a helpful personal assistant.
 
 # Tool
-get_my_name: This returns the name of the Engineer managing this code. It takes a string as input and returns a string as output.
+get_my_name: This returns the name of the Engineer managing this code. Just call the tool and it will return the name of the Engineer managing this code. The tool takes no input and returns a string as output.
 This is how to use the tool:
 Anytime this tool is called, I want you to specify a json blob using the example below in this format:
 {
-    "tool_name": "get_my_name",
-    "input": "Paul"
+    "tool_name": "get_my_name"
 }
 
 # Goal
@@ -66,19 +54,54 @@ Final Answer: the final answer to the original question
 
 """
 
-# We can now call the client with the system prompt and the message template. We will pass the system prompt to the chat method. The chat method will return a response from the model. We will print the response to the console.
 
+# # We now define the message template
+message = [
+{   "role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": "What is the name of the Engineer managing this code?"}
+]
 
-
-
-
-
+response = client.chat.completions.create(
+    model="deepseek/deepseek-v4.1-flash",
+    messages=message,
+    max_tokens=500,
+    stream = False,
+    stop = ["Observation:"],
+    extra_body = {"reasoning": {"enabled": False}}
+)
+print(response.choices[0].message.content)
 
 
 # This is a simple function that returns my name. It is meant to be a tool that an LLM can call to get my name. The function takes a string as input and returns a string as output.
-def get_my_name(name: str) -> str:
+def get_my_name() -> str:
     """
     This function returns my name.
     """
+    name : str = "Kimi"
     return f"My name is {name}."
+get_my_name()
+
+
+# We can now call the client with the system prompt and the message template. We will pass the system prompt to the chat method. The chat method will return a response from the model. We will print the response to the console.
+message = [
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": "What is the name of the Engineer managing this code?"}
+]
+
+message = [
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": "What is the name of the Engineer managing this code?"},
+    {"role": "assistant", "content": response.choices[0].message.content + "\nObservation: " + get_my_name()}
+]
+
+response = client.chat.completions.create(
+    model="deepseek/deepseek-v4.1-flash",
+    messages=message,
+    max_tokens=500,
+    stream = False,
+    extra_body = {"reasoning": {"enabled": False}}
+)
+print(response.choices[0].message.content)
+
+
 
