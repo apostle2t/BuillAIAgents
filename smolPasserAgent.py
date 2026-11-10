@@ -35,7 +35,7 @@ def output_passer(headline: str, problem: str, extent: str, danger: str, address
     """
     This tool takes in various fields related to a report and returns a JSON object containing the information.
     Args:
-        headline (str): Short German headline of the problem, at most 8 words, no names and no address, for example: Heizung in der ganzen Wohnung ausgefallen.
+        headline (str): Short German headline of the problem, at most 8 words, no names and no address, for example: Heizung in der ganzen Wohnung ausgefallen. Eunsure you are outputting a proper headline in clear German.
 
         problem (str): Exactly one of: heating (heating, hot water), water (burst pipe, water damage, blocked drain), electricity (power cut, fuse), gas (gas smell, gas appliance), lift, lock_door (locked out, lock, front door), tv_cable (TV, cable, satellite), noise (noise, neighbours), damage (other damage), general_question (questions, contact data, house rules), other.
 
@@ -47,7 +47,7 @@ def output_passer(headline: str, problem: str, extent: str, danger: str, address
 
         language (str): "Language the caller spoke, as a two-letter code, e.g. de, en, pl, tr."
 
-        summary (str): Two factual sentences in German: what is wrong and what the caller needs. No personal names.
+        summary (str): Two factual sentences in German: what is wrong and what the caller needs. No personal names. Ensure the German is clear and correct.
 
         caller_name (str): "The caller's name exactly as they said it (first and/or last name). null if no name was said."
 
@@ -65,7 +65,7 @@ def output_passer(headline: str, problem: str, extent: str, danger: str, address
         "summary": summary,
         "caller_name": caller_name,
         "caller_phone": caller_phone
-    }, indent=4)
+    }, indent=4, ensure_ascii=False)
 
 #2
 model = OpenAIServerModel(
@@ -84,10 +84,9 @@ passer_agent = CodeAgent(
     You read the transcript of a call to an emergency hotline (Notdienst) and fill in the case fields.
         Rules:
         - Only use facts that were said in the call. Do not invent or guess anything.
-        - Everything must be outputed in English.  
+        - Everything must be outputed in German.  
         - If something was not said, return null for that field.
         - Pick category values only from the allowed values given for each field. If a category is unclear, use other.
-        - Write the title and the summary in English. Keep addresses exactly as the caller said them.
         - Put the caller's name only into caller_name. Do not include it or any other personal names in title, summary or address.
     """
                     )
