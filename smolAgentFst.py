@@ -18,7 +18,7 @@ load_dotenv()
 
 # We define the tool blocks
 @tool
-def my_default_too(arg1: str, arg2: str) -> str:
+def my_default_tool(arg1: str, arg2: str) -> str:
     """
     This is my default tool. It takes two arguments and returns a string.
     Args:
