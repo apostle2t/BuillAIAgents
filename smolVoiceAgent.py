@@ -12,10 +12,11 @@ Things needed:
 5. Text to speech (TTS)
 
 """
-
-from smolagents import CodeAgent
+from typing import Generator
+from smolagents import CodeAgent, OpenAIServerModel
 from fastrtc import get_stt_model, get_tts_model, Stream, ReplyOnPause, get_twilio_turn_credentials
 from dotenv import load_dotenv
+import numpy as np
 import os
 
 load_dotenv()
@@ -34,6 +35,34 @@ agent_voice = CodeAgent(
     description="You are a helpful voice assistant. You can answer questions and provide information to the user",
 )
 
+# We definbe the STT and TTS models
+sst_model = get_stt_model()
+tts_model = get_tts_model()
+
+# We define the full system prompt for the LLM
+SYSTEM_PROMPT = """
+
+# PERSONALITY
+# GOAL
+# TONE
+# GUARDRAILS
+
+
+
+"""
+
+
 # We define the SST and TTS models
-def voice_response():
-    pass
+def voice_response(audio_input: tuple[int, np.ndarray]) -> Generator[tuple[int, np.ndarray], None, None]:
+    text_data = sst_model(audio_input)
+    if text_data is None:
+        yield None
+    else:
+        input_text = f"{SYSTEM_PROMPT}\n\nUser: {text_data}\n\nAssistant: "
+        response = agent_voice(input_text)
+    for audio_output in tts_model.stream_tts_sync(response):
+        yield audio_output
+
+
+# we stream the response back to the user
+stream = Stream()
