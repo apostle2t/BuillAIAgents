@@ -1,4 +1,5 @@
-
+from llama_index.llms.openrouter import OpenRouter
+from llama_index.core.llms import ChatMessage
 from llama_index.core import SimpleDirectoryReader
 from llama_index.embeddings.nvidia import NVIDIAEmbedding
 from llama_index.core import Document
@@ -9,6 +10,8 @@ import chromadb
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from dotenv import load_dotenv
 import asyncio
+import os
+from smolagents import OpenAIServerModel
 
 load_dotenv()
 
@@ -33,16 +36,31 @@ pipeline = IngestionPipeline(
     vector_store=vector_store
 )
 async def process_documents(documents):
-    nodes = await pipeline.arun(documents=documents)
+    nodes = await pipeline.arun(documents=documents, show_progress=True)
     print(f"Processed {len(nodes)} nodes from the documents.")
     return nodes
-asyncio.run(process_documents(documents))
-
+if store_collection.count() == 0:
+    print("No documents found in the vector store. Processing and adding documents...")
+    asyncio.run(process_documents(documents))
 
 # We index the documents for retrieval
 embedding_model = NVIDIAEmbedding(model="nvidia/nemotron-3-embed-1b", truncate="END")
-index = VectorStoreIndex.from_vector_store(vector_store=vector_store, embedding_model=embedding_model)
+index = VectorStoreIndex.from_vector_store(vector_store=vector_store, embed_model=embedding_model)
 
 
 # Querying the vector store for information
-query_engine = index.as_query_engine()
+llm = OpenRouter(
+    model="deepseek/deepseek-v4.1-flash",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    max_tokens=3000,
+    context_window=64000,
+    additional_kwargs={"extra_body": {"reasoning": {"enabled": False}}}
+)
+query_engine = index.as_query_engine(
+    llm=llm,
+    response_mode="compact",
+    similarity_top_k=2,
+    streaming=True
+)
+res = query_engine.query("How do I use the ElevenLabs API to generate speech from text?")
+res.print_response_stream()
